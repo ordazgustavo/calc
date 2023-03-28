@@ -1,0 +1,11 @@
+[package]
+name = "calc"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[features]
+default = ["dbg_code", "dbg_trace"]
+dbg_code = []
+dbg_trace = []
