@@ -8,7 +8,7 @@ use std::io::{self, BufRead, Write};
 use vm::Vm;
 
 #[derive(Debug)]
-pub enum InterpretResult {
+pub enum InterpretError {
     CompileError,
     RuntimeError,
 }

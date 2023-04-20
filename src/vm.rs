@@ -1,7 +1,7 @@
 use crate::{
     code::{OpCode, Value},
     compiler::Parser,
-    InterpretResult,
+    InterpretError,
 };
 
 const STACK_MAX: usize = 256;
@@ -18,38 +18,43 @@ impl Vm {
         }
     }
 
-    pub fn interpret(&mut self, source: &str) -> Result<(), InterpretResult> {
+    pub fn interpret(&mut self, source: &str) -> Result<(), InterpretError> {
         let parser = Parser::new(source);
+
         #[cfg(feature = "dbg_code")]
         {
+            use std::io::{stdout, Write};
+            let mut lock = stdout().lock();
             for (i, ins) in parser.clone().enumerate() {
-                println!("{i:<04} {:>4} {ins:?}", ins.line);
+                writeln!(lock, "{i:<04} {:>4} {ins:?}", ins.line).unwrap();
             }
         }
 
         for (i, instruction) in parser.enumerate() {
             #[cfg(feature = "dbg_trace")]
             {
-                print!("          ");
+                use std::io::{stdout, Write};
+                let mut lock = stdout().lock();
+                write!(lock, "          ").unwrap();
                 for slot in self.stack.iter() {
-                    print!("[ {slot:?} ]");
+                    write!(lock, "[ {slot:?} ]").unwrap();
                 }
-                print!("\n");
-                println!("{i:<04} {:>4} {instruction:?}", instruction.line);
+                write!(lock, "\n").unwrap();
+                writeln!(lock, "{i:<04} {:>4} {instruction:?}", instruction.line).unwrap();
             }
             match instruction.code {
                 OpCode::Constant(v) => self.stack.push(v.clone()),
                 OpCode::Negate => {
-                    let Some(v) = self.stack.pop() else {return Err(InterpretResult::RuntimeError)};
+                    let Some(v) = self.stack.pop() else {return Err(InterpretError::RuntimeError)};
                     let v = v.negate()?;
                     self.stack.push(v);
                 }
                 OpCode::Add => {
-                    let Some((lhs, rhs)) = self.stack.pop().zip(self.stack.pop()) else {return Err(InterpretResult::RuntimeError)};
+                    let Some((lhs, rhs)) = self.stack.pop().zip(self.stack.pop()) else {return Err(InterpretError::RuntimeError)};
                     self.stack.push((lhs + rhs)?);
                 }
                 OpCode::Return => {
-                    println!("{:?}", self.stack.pop());
+                    println!("{:?}", self.stack.pop().unwrap());
                     break;
                 }
             }

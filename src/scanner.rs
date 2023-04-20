@@ -23,7 +23,7 @@ impl<'a> Scanner<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token<'a> {
     pub kind: TokenKind,
     pub line: usize,
@@ -36,7 +36,7 @@ impl<'a> Token<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum TokenKind {
     Minus,
     Plus,
@@ -64,7 +64,7 @@ impl<'a> Iterator for Scanner<'a> {
                         .chars
                         .by_ref()
                         .take_while(|(_, c)| c.is_ascii_digit() || *c == '.')
-                        .fold(0, |_, (i, _)| i);
+                        .fold(start, |_, (i, _)| i);
 
                     Some(self.make_token(TokenKind::Number, start, end))
                 }
@@ -81,5 +81,54 @@ impl<'a> Iterator for Scanner<'a> {
                 Some(Token::new(TokenKind::Eof, self.line, ""))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_scans_int() {
+        let mut scanner = Scanner::new("1");
+
+        assert_eq!(Some(Token::new(TokenKind::Number, 1, "1")), scanner.next());
+        assert_eq!(Some(Token::new(TokenKind::Eof, 2, "")), scanner.next());
+        assert_eq!(None, scanner.next());
+    }
+
+    #[test]
+    fn it_scans_double() {
+        let mut scanner = Scanner::new("1.0");
+
+        assert_eq!(
+            Some(Token::new(TokenKind::Number, 1, "1.0")),
+            scanner.next()
+        );
+        assert_eq!(Some(Token::new(TokenKind::Eof, 2, "")), scanner.next());
+        assert_eq!(None, scanner.next());
+    }
+
+    #[test]
+    fn it_scans_negated_int() {
+        let mut scanner = Scanner::new("-1");
+
+        assert_eq!(Some(Token::new(TokenKind::Minus, 1, "-")), scanner.next());
+        assert_eq!(Some(Token::new(TokenKind::Number, 1, "1")), scanner.next());
+        assert_eq!(Some(Token::new(TokenKind::Eof, 2, "")), scanner.next());
+        assert_eq!(None, scanner.next());
+    }
+
+    #[test]
+    fn it_scans_negated_double() {
+        let mut scanner = Scanner::new("-1.0");
+
+        assert_eq!(Some(Token::new(TokenKind::Minus, 1, "-")), scanner.next());
+        assert_eq!(
+            Some(Token::new(TokenKind::Number, 1, "1.0")),
+            scanner.next()
+        );
+        assert_eq!(Some(Token::new(TokenKind::Eof, 2, "")), scanner.next());
+        assert_eq!(None, scanner.next());
     }
 }
