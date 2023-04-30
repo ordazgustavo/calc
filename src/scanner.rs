@@ -1,9 +1,9 @@
-use std::str::CharIndices;
+use std::{iter::Peekable, str::CharIndices};
 
 #[derive(Clone)]
 pub struct Scanner<'a> {
     source: &'a str,
-    chars: CharIndices<'a>,
+    chars: Peekable<CharIndices<'a>>,
     line: usize,
     finished: bool,
 }
@@ -12,7 +12,7 @@ impl<'a> Scanner<'a> {
     pub fn new(source: &'a str) -> Self {
         Self {
             source,
-            chars: source.char_indices(),
+            chars: source.char_indices().peekable(),
             line: 1,
             finished: false,
         }
@@ -40,6 +40,10 @@ impl<'a> Token<'a> {
 pub enum TokenKind {
     Minus,
     Plus,
+    Star,
+    Slash,
+    LParen,
+    RParen,
 
     Number,
 
@@ -59,12 +63,17 @@ impl<'a> Iterator for Scanner<'a> {
             Some((start, c)) => match c {
                 '-' => Some(self.make_token(TokenKind::Minus, start, start)),
                 '+' => Some(self.make_token(TokenKind::Plus, start, start)),
+                '*' => Some(self.make_token(TokenKind::Star, start, start)),
+                '/' => Some(self.make_token(TokenKind::Slash, start, start)),
+                '(' => Some(self.make_token(TokenKind::LParen, start, start)),
+                ')' => Some(self.make_token(TokenKind::RParen, start, start)),
                 c if c.is_ascii_digit() => {
-                    let end = self
-                        .chars
-                        .by_ref()
-                        .take_while(|(_, c)| c.is_ascii_digit() || *c == '.')
-                        .fold(start, |_, (i, _)| i);
+                    let mut end = start;
+                    while let Some((i, _)) =
+                        self.chars.next_if(|(_, c)| c.is_ascii_digit() || *c == '.')
+                    {
+                        end = i
+                    }
 
                     Some(self.make_token(TokenKind::Number, start, end))
                 }

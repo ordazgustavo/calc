@@ -46,12 +46,23 @@ impl Vm {
                 OpCode::Constant(v) => self.stack.push(v.clone()),
                 OpCode::Negate => {
                     let Some(v) = self.stack.pop() else {return Err(InterpretError::RuntimeError)};
-                    let v = v.negate()?;
-                    self.stack.push(v);
+                    self.stack.push(v.negate());
                 }
                 OpCode::Add => {
-                    let Some((lhs, rhs)) = self.stack.pop().zip(self.stack.pop()) else {return Err(InterpretError::RuntimeError)};
-                    self.stack.push((lhs + rhs)?);
+                    let Some((rhs, lhs)) = self.stack.pop().zip(self.stack.pop()) else {return Err(InterpretError::RuntimeError)};
+                    self.stack.push(lhs + rhs);
+                }
+                OpCode::Sub => {
+                    let Some((rhs, lhs)) = self.stack.pop().zip(self.stack.pop()) else {return Err(InterpretError::RuntimeError)};
+                    self.stack.push(lhs - rhs);
+                }
+                OpCode::Mul => {
+                    let Some((rhs, lhs)) = self.stack.pop().zip(self.stack.pop()) else {return Err(InterpretError::RuntimeError)};
+                    self.stack.push(lhs * rhs);
+                }
+                OpCode::Div => {
+                    let Some((rhs, lhs)) = self.stack.pop().zip(self.stack.pop()) else {return Err(InterpretError::RuntimeError)};
+                    self.stack.push(lhs / rhs);
                 }
                 OpCode::Return => {
                     println!("{:?}", self.stack.pop().unwrap());

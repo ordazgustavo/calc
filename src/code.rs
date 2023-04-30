@@ -1,6 +1,7 @@
-use std::{fmt::Debug, ops::Add};
-
-use crate::InterpretError;
+use std::{
+    fmt::Debug,
+    ops::{Add, Div, Mul, Sub},
+};
 
 #[derive(Clone)]
 pub struct Code {
@@ -22,7 +23,9 @@ pub enum OpCode {
     Constant(Value),
     Negate,
     Add,
-    // Sub,
+    Sub,
+    Mul,
+    Div,
     Return,
 }
 
@@ -32,7 +35,9 @@ impl Debug for OpCode {
             OpCode::Constant(_) => write!(f, "CONSTANT"),
             OpCode::Negate => write!(f, "NEGATE"),
             OpCode::Add => write!(f, "ADD"),
-            // OpCode::Sub => write!(f, "SUB"),
+            OpCode::Sub => write!(f, "SUB"),
+            OpCode::Mul => write!(f, "MUL"),
+            OpCode::Div => write!(f, "Div"),
             OpCode::Return => write!(f, "RETURN"),
         }
     }
@@ -45,23 +50,62 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn negate(&self) -> Result<Self, InterpretError> {
+    pub fn negate(&self) -> Self {
         match self {
-            Value::Double(v) => Ok(Value::Double(-*v)),
-            Value::Int(v) => Ok(Value::Int(-*v)),
+            Value::Double(v) => Value::Double(-*v),
+            Value::Int(v) => Value::Int(-*v),
         }
     }
 }
 
 impl Add for Value {
-    type Output = Result<Self, InterpretError>;
+    type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Value::Double(lhs), Value::Double(rhs)) => Ok(Value::Double(lhs + rhs)),
-            (Value::Int(lhs), Value::Int(rhs)) => Ok(Value::Int(lhs + rhs)),
-            (Value::Int(lhs), Value::Double(rhs)) => Ok(Value::Double(lhs as f32 + rhs)),
-            (Value::Double(lhs), Value::Int(rhs)) => Ok(Value::Double(lhs + rhs as f32)),
+            (Value::Double(lhs), Value::Double(rhs)) => Value::Double(lhs + rhs),
+            (Value::Int(lhs), Value::Int(rhs)) => Value::Int(lhs + rhs),
+            (Value::Int(lhs), Value::Double(rhs)) => Value::Double(lhs as f32 + rhs),
+            (Value::Double(lhs), Value::Int(rhs)) => Value::Double(lhs + rhs as f32),
+        }
+    }
+}
+
+impl Sub for Value {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Value::Double(lhs), Value::Double(rhs)) => Value::Double(lhs - rhs),
+            (Value::Int(lhs), Value::Int(rhs)) => Value::Int(lhs - rhs),
+            (Value::Int(lhs), Value::Double(rhs)) => Value::Double(lhs as f32 - rhs),
+            (Value::Double(lhs), Value::Int(rhs)) => Value::Double(lhs - rhs as f32),
+        }
+    }
+}
+
+impl Mul for Value {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Value::Double(lhs), Value::Double(rhs)) => Value::Double(lhs * rhs),
+            (Value::Int(lhs), Value::Int(rhs)) => Value::Int(lhs * rhs),
+            (Value::Int(lhs), Value::Double(rhs)) => Value::Double(lhs as f32 * rhs),
+            (Value::Double(lhs), Value::Int(rhs)) => Value::Double(lhs * rhs as f32),
+        }
+    }
+}
+
+impl Div for Value {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Value::Double(lhs), Value::Double(rhs)) => Value::Double(lhs / rhs),
+            (Value::Int(lhs), Value::Int(rhs)) => Value::Int(lhs / rhs),
+            (Value::Int(lhs), Value::Double(rhs)) => Value::Double(lhs as f32 / rhs),
+            (Value::Double(lhs), Value::Int(rhs)) => Value::Double(lhs / rhs as f32),
         }
     }
 }

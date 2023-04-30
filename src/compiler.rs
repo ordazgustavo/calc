@@ -11,22 +11,18 @@ use crate::{
 enum Precedence {
     None,
     Assignment, // =
-    // Or,         // or
-    // And,        // and
-    // Equality,   // == !=
-    // Comparison, // < > <= >=
-    Term, // + -
-    // Factor,     // * /
-    Unary, // ! -
-           // Call,       // . ()
-           // Primary,
+    Term,       // + -
+    Factor,     // * /
+    Unary,      // ! -
 }
 
 impl From<u8> for Precedence {
     fn from(value: u8) -> Self {
         match value {
-            0 => Self::Assignment,
-            1 => Self::Term,
+            0 => Self::None,
+            1 => Self::Assignment,
+            2 => Self::Term,
+            3 => Self::Factor,
             _ => Self::Unary,
         }
     }
@@ -35,7 +31,6 @@ impl From<u8> for Precedence {
 #[derive(Debug, Clone)]
 enum Rule {
     Unary,
-    Binary,
     Grouping,
     Number,
 }
@@ -43,12 +38,12 @@ enum Rule {
 #[derive(Debug, Clone)]
 struct ParseRule {
     prefix: Option<Rule>,
-    infix: Option<Rule>,
+    infix: bool,
     precedence: Precedence,
 }
 
 impl ParseRule {
-    const fn new(prefix: Option<Rule>, infix: Option<Rule>, precedence: Precedence) -> Self {
+    const fn new(prefix: Option<Rule>, infix: bool, precedence: Precedence) -> Self {
         Self {
             prefix,
             infix,
@@ -57,20 +52,39 @@ impl ParseRule {
     }
 }
 
-const RULES: [(TokenKind, ParseRule); 4] = [
+const RULES: [(TokenKind, ParseRule); 8] = [
+    (
+        TokenKind::LParen,
+        ParseRule::new(Some(Rule::Grouping), false, Precedence::None),
+    ),
+    (
+        TokenKind::RParen,
+        ParseRule::new(None, false, Precedence::None),
+    ),
     (
         TokenKind::Minus,
-        ParseRule::new(Some(Rule::Unary), Some(Rule::Binary), Precedence::Term),
+        ParseRule::new(Some(Rule::Unary), true, Precedence::Term),
     ),
     (
         TokenKind::Plus,
-        ParseRule::new(None, Some(Rule::Binary), Precedence::Term),
+        ParseRule::new(None, true, Precedence::Term),
+    ),
+    (
+        TokenKind::Star,
+        ParseRule::new(None, true, Precedence::Factor),
+    ),
+    (
+        TokenKind::Slash,
+        ParseRule::new(None, true, Precedence::Factor),
     ),
     (
         TokenKind::Number,
-        ParseRule::new(Some(Rule::Number), None, Precedence::None),
+        ParseRule::new(Some(Rule::Number), false, Precedence::None),
     ),
-    (TokenKind::Eof, ParseRule::new(None, None, Precedence::None)),
+    (
+        TokenKind::Eof,
+        ParseRule::new(None, false, Precedence::None),
+    ),
 ];
 
 #[derive(Clone)]
@@ -122,7 +136,7 @@ impl<'a> Parser<'a> {
         match prefix {
             Rule::Unary => self.unary(),
             Rule::Number => self.number(),
-            _ => todo!(),
+            Rule::Grouping => self.grouping(),
         };
 
         while self
@@ -131,14 +145,9 @@ impl<'a> Parser<'a> {
         {
             self.advance();
             // dbg!(&self.codes, &self.previous, &self.current, &precedence);
-            let Some(infix) = &self.get_prev_rule().expect("No parse rule").infix else { break };
-
-            match infix {
-                Rule::Unary => self.unary(),
-                Rule::Binary => self.binary(),
-                Rule::Grouping => todo!(),
-                Rule::Number => self.unary(),
-            };
+            if self.get_prev_rule().expect("No parse rule").infix {
+                self.binary();
+            }
         }
     }
 
@@ -169,6 +178,18 @@ impl<'a> Parser<'a> {
                 code: OpCode::Add,
                 line: token.line,
             },
+            TokenKind::Minus => Code {
+                code: OpCode::Sub,
+                line: token.line,
+            },
+            TokenKind::Star => Code {
+                code: OpCode::Mul,
+                line: token.line,
+            },
+            TokenKind::Slash => Code {
+                code: OpCode::Div,
+                line: token.line,
+            },
             _ => unreachable!(),
         };
 
@@ -195,13 +216,18 @@ impl<'a> Parser<'a> {
 
         self.codes.push_back(code)
     }
+
+    fn grouping(&mut self) {
+        self.expression();
+        // dbg!(&self.current);
+        self.advance();
+    }
 }
 
 impl<'a> Iterator for Parser<'a> {
     type Item = Code;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // dbg!(&self.codes);
         if self.finished {
             return None;
         }
@@ -226,6 +252,7 @@ impl<'a> Iterator for Parser<'a> {
         }
 
         self.expression();
+
         self.next()
     }
 }
